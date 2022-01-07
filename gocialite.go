@@ -1,15 +1,12 @@
 package gocialite
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 
 	"github.com/danilopolani/gocialite/drivers"
 	"github.com/danilopolani/gocialite/structs"
@@ -17,53 +14,18 @@ import (
 	"gopkg.in/oleiade/reflections.v1"
 )
 
-// Dispatcher allows to safely issue concurrent Gocials
-type Dispatcher struct {
-	mu sync.RWMutex
-	g  map[string]*Gocial
-}
-
-// NewDispatcher creates new Dispatcher
-func NewDispatcher() *Dispatcher {
-	return &Dispatcher{g: make(map[string]*Gocial)}
-}
-
-// New Gocial instance
-func (d *Dispatcher) New() *Gocial {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	state := randToken()
-	g := &Gocial{state: state}
-	d.g[state] = g
-	return g
-}
-
-// Handle callback. Can be called only once for given state.
-func (d *Dispatcher) Handle(state, code string) (*structs.User, *oauth2.Token, error) {
-	d.mu.RLock()
-	g, ok := d.g[state]
-	d.mu.RUnlock()
-	if !ok {
-		return nil, nil, fmt.Errorf("invalid CSRF token: %s", state)
-	}
-	err := g.Handle(state, code)
-	d.mu.Lock()
-	delete(d.g, state)
-	d.mu.Unlock()
-	return &g.User, g.Token, err
-}
-
-// Gocial is the main struct of the package
-type Gocial struct {
-	driver, state string
-	scopes        []string
-	conf          *oauth2.Config
-	User          structs.User
-	Token         *oauth2.Token
-}
-
 func init() {
 	drivers.InitializeDrivers(RegisterNewDriver)
+}
+
+// Gocial is the main struct of the package with json tags
+type Gocial struct {
+	driver string
+	state  string
+	scopes []string
+	conf   *oauth2.Config
+	User   structs.User
+	Token  *oauth2.Token
 }
 
 var (
@@ -135,8 +97,9 @@ func (g *Gocial) Redirect(clientID, clientSecret, redirectURL string) (string, e
 		Scopes:       g.scopes,
 		Endpoint:     endpointMap[g.driver],
 	}
+	url := g.conf.AuthCodeURL(g.state)
 
-	return g.conf.AuthCodeURL(g.state), nil
+	return url, nil
 }
 
 // Handle callback from provider
@@ -204,52 +167,93 @@ func (g *Gocial) Handle(state, code string) error {
 	return nil
 }
 
-// Generate a random token
-func randToken() string {
-	b := make([]byte, 32)
-	rand.Read(b)
-	return base64.StdEncoding.EncodeToString(b)
+//Marshal marshals Gocial struct to JSON
+func Marshal(g *Gocial) ([]byte, error) {
+	return json.Marshal(g.createJSONable())
 }
 
-// Check if a value is in a string slice
-func inSlice(v string, s []string) bool {
-	for _, scope := range s {
-		if scope == v {
-			return true
+//Unmarshal the JSON to Gocial
+func Unmarshal(data []byte) (*Gocial, error) {
+	gj := &gocialJSONable{}
+	err := json.Unmarshal(data, gj)
+	if err != nil {
+		return nil, err
+	}
+	g := &Gocial{}
+	g.fillFromJSONable(gj)
+
+	return g, nil
+}
+
+//NewGocial Create Gocial instance from passed arguments
+func NewGocial(driver, state string, scopes []string, user structs.User, conf *oauth2.Config, token *oauth2.Token) *Gocial {
+	g := &Gocial{}
+	g.driver = driver
+	g.scopes = scopes
+	g.state = state
+	g.User = user
+	g.conf = conf
+	g.Token = token
+	return g
+}
+
+//Equals compares two Gocial instances
+func (g *Gocial) Equals(g2 *Gocial) bool {
+	//Compare basic fields
+	if g.User.ID != g2.User.ID {
+		return false
+	}
+	if g.driver != g2.driver {
+		return false
+	}
+	if g.state != g2.state {
+		return false
+	}
+	//Compare tokens
+	if g.Token != nil {
+		if g2.Token == nil {
+			return false
+		}
+		if g.Token.AccessToken != g2.Token.AccessToken {
+			return false
+		}
+		if g.Token.Expiry != g2.Token.Expiry {
+			return false
+		}
+		if g.Token.RefreshToken != g2.Token.RefreshToken {
+			return false
 		}
 	}
 
-	return false
-}
-
-// Decode a json or return an error
-func jsonDecode(js []byte) (map[string]interface{}, error) {
-	var decoded map[string]interface{}
-	decoder := json.NewDecoder(strings.NewReader(string(js)))
-	decoder.UseNumber()
-
-	if err := decoder.Decode(&decoded); err != nil {
-		return nil, err
+	if g.User.ID != g2.User.ID {
+		return false
 	}
-	
-	return decoded, nil
-}
-
-// Return the keys of a map
-func keys(m map[string]string) []string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
+	if g.User.Email != g2.User.Email {
+		return false
 	}
-
-	return keys
-}
-
-func complexKeys(m map[string]map[string]string) []string {
-	var keys []string
-	for k := range m {
-		keys = append(keys, k)
+	//Compare configs
+	if g.conf != nil {
+		if g2.conf == nil {
+			return false
+		}
+		if g.conf.ClientID != g2.conf.ClientID {
+			return false
+		}
+		if g.conf.ClientSecret != g2.conf.ClientSecret {
+			return false
+		}
+		if g.conf.RedirectURL != g2.conf.RedirectURL {
+			return false
+		}
 	}
-
-	return keys
+	//Compare scopes
+	if len(g.scopes) != len(g2.scopes) {
+		return false
+	}
+	for i := range g.scopes {
+		if g.scopes[i] != g2.scopes[i] {
+			return false
+		}
+	}
+	return true
 }

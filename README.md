@@ -6,10 +6,15 @@
 ![GitHub contributors](https://img.shields.io/github/contributors/danilopolani/gocialite.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-## NOT MAINTAINED
-This project is no longer maintained.  
+## Copyright
+Forked from great repository *danilopolani/gocialite* which is no longer maintained.
+
+## Reason for this fork
+Original module is simple and easy to use, but lacks some features, for example, a way to store the dispatcher state permanently, in cookies or in redis store. This repository should fix that. Initially should add support for redis storage.
 
 ----
+# Original Readme
+This readme will be updated once permanent storage solution is added to the module
 
 Gocialite is a Socialite inspired package to manage social oAuth authentication without problems.
 The idea was born when I discovered that Goth is not so flexible: I was using Revel and it was *impossible* to connect them properly.

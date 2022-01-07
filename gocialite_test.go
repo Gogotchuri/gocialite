@@ -105,3 +105,5 @@ func TestExchange(t *testing.T) {
 	err = gocialTest.Handle(gocialTest.state, "foo")
 	assert.NotNil(t, err)
 }
+
+//TODO add tests for new interface
