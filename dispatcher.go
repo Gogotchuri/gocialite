@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/danilopolani/gocialite/structs"
+	"github.com/gogotchuri/gocialite/structs"
 	"golang.org/x/oauth2"
 )
 

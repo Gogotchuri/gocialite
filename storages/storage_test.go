@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/danilopolani/gocialite/structs"
 	"github.com/go-redis/redis"
 	"github.com/gogotchuri/gocialite"
 	"github.com/gogotchuri/gocialite/storages"
+	"github.com/gogotchuri/gocialite/structs"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/oauth2"
 )

@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/danilopolani/gocialite/drivers"
-	"github.com/danilopolani/gocialite/structs"
+	"github.com/gogotchuri/gocialite/drivers"
+	"github.com/gogotchuri/gocialite/structs"
 	"golang.org/x/oauth2"
 	"gopkg.in/oleiade/reflections.v1"
 )
