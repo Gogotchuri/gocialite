@@ -1,10 +1,12 @@
 package storages_test
 
 import (
+	"context"
 	"fmt"
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"testing"
 
-	"github.com/go-redis/redis"
 	"github.com/gogotchuri/gocialite"
 	"github.com/gogotchuri/gocialite/storages"
 	"github.com/gogotchuri/gocialite/structs"
@@ -12,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-//TestMemoryStorage1 tests MemoryStorage by creating instance, setting getting and deleting a Gocialite struct
+// TestMemoryStorage1 tests MemoryStorage by creating instance, setting getting and deleting a Gocialite struct
 func TestMemoryStorage1(t *testing.T) {
 	storage := storages.NewMemoryStorage()
 	state, gocial := createStateAndGocial()
@@ -73,11 +75,11 @@ func createStateAndGocial() (string, *gocialite.Gocial) {
 
 func createRedisClient() *redis.Client {
 	//Initializing redis
-	dsn := "127.0.0.1:6379"
+	s, err := miniredis.Run()
 	client := redis.NewClient(&redis.Options{
-		Addr: dsn,
+		Addr: s.Addr(),
 	})
-	_, err := client.Ping().Result()
+	_, err = client.Ping(context.Background()).Result()
 	if err != nil {
 		fmt.Println(err.Error())
 		return nil
